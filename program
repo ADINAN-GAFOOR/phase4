@@ -1,0 +1,217 @@
+#This is a kaggle notebook.
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+/kaggle/input/market-basket-analysis/Assignment-1_Data.xlsx
+/kaggle/input/market-basket-analysis/Assignment-1_Data.csv
+import pandas as pd
+
+dataset_path = '/kaggle/input/market-basket-analysis/Assignment-1_Data.xlsx'
+df = pd.read_excel(dataset_path)
+print("Number of rows and columns:", df.shape)
+print("\nData Types and Missing Values:")
+print(df.info())
+print("\nFirst few rows of the dataset:")
+print(df.head())
+Number of rows and columns: (522064, 7)
+
+Data Types and Missing Values:
+<class 'pandas.core.frame.DataFrame'>
+RangeIndex: 522064 entries, 0 to 522063
+Data columns (total 7 columns):
+ #   Column      Non-Null Count   Dtype         
+---  ------      --------------   -----         
+ 0   BillNo      522064 non-null  object        
+ 1   Itemname    520609 non-null  object        
+ 2   Quantity    522064 non-null  int64         
+ 3   Date        522064 non-null  datetime64[ns]
+ 4   Price       522064 non-null  float64       
+ 5   CustomerID  388023 non-null  float64       
+ 6   Country     522064 non-null  object        
+dtypes: datetime64[ns](1), float64(2), int64(1), object(3)
+dtypes: datetime64[ns](1), float64(2), int64(1), object(3)
+memory usage: 27.9+ MB
+None
+First few rows of the dataset:
+   BillNo                             Itemname  Quantity                Date  \
+0  536365   WHITE HANGING HEART T-LIGHT HOLDER         6 2010-12-01 08:26:00   
+1  536365                  WHITE METAL LANTERN         6 2010-12-01 08:26:00   
+2  536365       CREAM CUPID HEARTS COAT HANGER         8 2010-12-01 08:26:00   
+3  536365  KNITTED UNION FLAG HOT WATER BOTTLE         6 2010-12-01 08:26:00   
+4  536365       RED WOOLLY HOTTIE WHITE HEART.         6 2010-12-01 08:26:00   
+ Price  CustomerID         Country  
+0   2.55     17850.0  United Kingdom  
+1   3.39     17850.0  United Kingdom  
+2   2.75     17850.0  United Kingdom  
+3   3.39     17850.0  United Kingdom  
+4   3.39     17850.0  United Kingdom  
+print("Missing Values:")
+print(df.isnull().sum())
+df.dropna(inplace=True)
+Missing Values:
+BillNo             0
+Itemname        1455transaction_data_path = '/kaggle/working/transaction_data.csv'
+transaction_data.to_csv(transaction_data_path, index=False)
+Quantity           0
+Date               0
+Price              0
+CustomerID    134041
+Country            0
+dtype: int64
+transaction_data = df.groupby(['BillNo', 'Date'])['Itemname'].apply(lambda x: ', '.join(x)).reset_index()
+columns_to_drop = ['BillNo', 'Date']
+transaction_data.drop(columns=columns_to_drop, inplace=True
+print("\nTransaction Data for Association Rule Mining:")
+print(transaction_data.head())
+
+Transaction Data for Association Rule Mining:
+                                            Itemname
+0  WHITE HANGING HEART T-LIGHT HOLDER, WHITE META...
+1  HAND WARMER UNION JACK, HAND WARMER RED POLKA DOT
+2  ASSORTED COLOUR BIRD ORNAMENT, POPPY'S PLAYHOU...
+3  JAM MAKING SET WITH JARS, RED COAT RACK PARIS ...
+4                           BATH BUILDING BLOCK WORD
+
+(18192, 1)
+
+# Split the 'Itemname' column into individual items
+items_df = transaction_data['Itemname'].str.split(', ', expand=True)
+
+# Concatenate the original DataFrame with the new items DataFrame
+transaction_data = pd.concat([transaction_data, items_df], axis=1)
+
+# Drop the original 'Itemname' column
+transaction_data = transaction_data.drop('Itemname', axis=1)
+
+# Display the resulting DataFrame
+print(transaction_data.head())
+# Convert items to boolean columns
+df_encoded = pd.get_dummies(transaction_data, prefix='', prefix_sep='').groupby(level=0, axis=1).max()
+
+# Save the transaction data to a CSV file
+df_encoded.to_csv('transaction_data_encoded.csv', index=False)
+# Load transaction data into a DataFrame
+df_encoded = pd.read_csv('transaction_data_encoded.csv')
+
+from mlxtend.frequent_patterns import apriori, association_rules
+
+# Association Rule Mining
+frequent_itemsets = apriori(df_encoded, min_support=0.007, use_colnames=True)
+rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=0.5)
+
+# Display information of the rules
+print("Association Rules:")
+print(rules.head())
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Plot scatterplot for Support vs. Confidence
+plt.figure(figsize=(12, 8))
+sns.scatterplot(x="support", y="confidence", size="lift", data=rules, hue="lift", palette="viridis", sizes=(20, 200))
+plt.title('Market Basket Analysis - Support vs. Confidence (Size = Lift)')
+plt.xlabel('Support')
+plt.ylabel('Confidence')
+plt.legend(title='Lift', loc='upper right', bbox_to_anchor=(1.2, 1))
+plt.show()
+import plotly.express as px
+
+# Convert frozensets to lists for serialization
+rules['antecedents'] = rules['antecedents'].apply(list)
+rules['consequents'] = rules['consequents'].apply(list)
+
+# Create an interactive scatter plot using plotly express
+fig = px.scatter(rules, x="support", y="confidence", size="lift",
+                 color="lift", hover_name="consequents",
+                 title='Market Basket Analysis - Support vs. Confidence',
+                 labels={'support': 'Support', 'confidence': 'Confidence'})
+
+# Customize the layout
+fig.update_layout(
+    xaxis_title='Support',
+    yaxis_title='Confidence',
+    coloraxis_colorbar_title='Lift',
+    showlegend=True
+)
+# Show the interactive plotimport networkx as nx
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+
+# Create a directed graph
+G = nx.DiGraph()
+
+# Add nodes and edges from association rules
+for idx, row in rules.iterrows():
+    G.add_node(tuple(row['antecedents']), color='skyblue')
+    G.add_node(tuple(row['consequents']), color='orange')
+    G.add_edge(tuple(row['antecedents']), tuple(row['consequents']), weight=row['support'])
+
+# Set node positions using a spring layout
+pos = nx.spring_layout(G)
+# Create an interactive plot using plotly
+edge_x = []
+edge_y = []
+for edge in G.edges(data=True):
+    x0, y0 = pos[edge[0]]
+    x1, y1 = pos[edge[1]]
+    edge_x.append(x0)
+    edge_x.append(x1)
+    edge_x.append(None)
+    edge_y.append(y0)
+    edge_y.append(y1)
+    edge_y.append(None)
+
+edge_trace = go.Scatter(
+    x=edge_x, y=edge_y,
+    line=dict(width=0.5, color='#888'),
+    hoverinfo='none',
+marker=dict(
+        showscale=True,
+        colorscale='YlGnBu',
+        size=10,
+        colorbar=dict(
+            thickness=15,
+            title='Node Connections',
+            xanchor='left',
+            titleside='right'
+        )import plotly.express as px
+
+# Combine antecedents and consequents into a single column for each rule
+rules['rule'] = rules['antecedents'].astype(str) + ' -> ' + rules['consequents'].astype(str)
+
+# Create a sunburst chart
+fig = px.sunburst(rules, path=['rule'], values='lift', 
+                  title='Market Basket Analysis - Sunburst Chart',
+                  color='support', color_continuous_scale='YlGnBu')
+
+# Customize the layout
+fig.update_layout(
+    margin=dict(l=0, r=0, b=0, t=40),
+)
+
+# Show the interactive plot
+fig.show()
+
+
+    )
+)
+# Customize the layout
+layout = go.Layout(
+    showlegend=False,
+    hovermode='closest',
+    margin=dict(b=0, l=0, r=0, t=0),
+)
+
+# Create the figure
+fig = go.Figure(data=[edge_trace, node_trace], layout=layout)
+
+# Show the interactive graph
+fig.show()
+
+fig.show()
+
+transaction_data.shape
+
